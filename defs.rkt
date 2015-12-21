@@ -5,10 +5,10 @@
 
 ;; Missing test proving hygiene
 ;; e.g. (let ([define "<overwritten>"]) (defn foo [x] x))
-
+(require (for-syntax syntax/parse))
 (define-syntax (def stx)
   (syntax-parse stx
-    [(_ name expr)
+    [(_ name:id expr)
      #`(define name expr)]))
 
 (define-syntax (fn stx)
@@ -20,9 +20,9 @@
 
 (define-syntax (defn stx)
   (syntax-parse stx
-    [(_ name (args ... (~datum &) r) .  body)
+    [(_ name:id (args ... (~datum &) r) .  body)
      #`(define (name args ... . r) . body)]
-    [(_ name (args ...) . body)
+    [(_ name:id (args ...) . body)
      #`(define (name args ...) . body)]))
 
 (module+ test
@@ -96,9 +96,29 @@
 
   (test-case
       "defn - 1 arg + rest-arg"
-    (let ((f-stx #'(defn foo (x & opt) (string-append x (car opt)))))
-      (check-equal?
-       (~> f-stx (expand-once) (syntax->datum))
-       '(define (foo x . opt) (string-append x (car opt))))))
+    (check-equal?
+     (~> #'(defn foo (x & opt) (string-append x (car opt))) (expand-once) (syntax->datum))
+     '(define (foo x . opt) (string-append x (car opt)))))
 
+  (test-case
+      "defn - eval no args"
+    (check-equal?
+     (let () (defn f [] 10) (f))
+     10))
+
+  (test-case
+      "defn - eval 1 arg"
+    (check-equal? (let () (defn f [x] x) (f "hello")) "hello"))
+
+  (test-case
+      "defn - eval rest-args"
+    (check-equal? (let () (defn f [& r] (string-join r ","))
+                       (f "a" "b" "c")) "a,b,c"))
+
+  (test-case
+      "defn - hygienic test"
+    (check-equal?
+     (let ([define (lambda (x . r) "overwritten")])
+       (defn f [x y] (+ x y)) (f 1 3))
+     4))
   )
