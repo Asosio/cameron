@@ -18,27 +18,27 @@
     (iter '() lst)))
 
 ;; Make mutable hash
-;; (mh a 1 b 2) === (make-hash '((a . 1) (b . 2)))
+;; (mh a 1 b 2) === (make-hash '((a . 1) (b . 2))
 (define-syntax (make stx)
   (define xs (cdr (syntax->list stx)))
   (if (even? (length xs))
       (let ((res (pair-list xs)))
-        (datum->syntax stx `(make-hash (quote ,res))))
+        #`(make-hash (quote #,res)))
       (raise-syntax-error #f
                           "expects an even number of forms"
                           stx
                           #'xs)))
+
 ;; Make immutable hash
 ;; (ih a 1 b 2) === (make-immutabl-hash '((a . 1) (b . 2)))
 (define-syntax (make-i stx)
   (define xs (cdr (syntax->list stx)))
   (if (even? (length xs))
       (let ((res (pair-list xs)))
-        (datum->syntax stx `(make-immutable-hash (quote ,res))))
+        #`(make-immutable-hash (quote #,res)))
       (raise-syntax-error #f
                           "expects an even number of forms"
-                          stx
-                          #'xs)))
+                          stx #'xs)))
 
 ;; DONE
 ;;;;;;;
