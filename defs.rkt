@@ -1,21 +1,29 @@
 #lang racket
 (require threading)
 
-(provide def defn)
+(provide def fn defn)
 
-;; (def <id> <expr>) => (define <id> <expr>)
+;; Missing test proving hygiene
+;; e.g. (let ([define "<overwritten>"]) (defn foo [x] x))
+
 (define-syntax (def stx)
-  (syntax-case stx ()
-    [(_ id expr)
-     #'(define id expr)]))
+  (syntax-parse stx
+    [(_ name expr)
+     #`(define name expr)]))
 
-;; (defn foo [a1 a2 . opts] (println "."))
-;; ==> (define (foo a1 a2 . opts) (println "."))
-(require (for-syntax racket/match))
+(define-syntax (fn stx)
+  (syntax-parse stx
+    [(_ (args ... (~datum &) r) . body)
+     #`(lambda (args ... . r) . body)]
+    [(_ (args ...) . body)
+     #`(lambda (args ...) . body)]))
+
 (define-syntax (defn stx)
-  (match (syntax->list stx)
-    [(list-rest _ name (list-rest args ... rst-args) body)
-     (datum->syntax stx `(define (,name ,@args . ,rst-args) ,@body))]))
+  (syntax-parse stx
+    [(_ name (args ... (~datum &) r) .  body)
+     #`(define (name args ... . r) . body)]
+    [(_ name (args ...) . body)
+     #`(define (name args ...) . body)]))
 
 (module+ test
   (require rackunit)
@@ -79,10 +87,18 @@
      (~>  #'(defn foo () (println "stuff") (+ x y)) (expand-once) (syntax->datum))
      '(define (foo) (println "stuff") (+ x y))))
 
-;;  (test-case
-;;      "defn - opt-arg only"
-;;   (let ((f-stx #'(defn foo (. opt) opt)))
-;;     (check-equal?
-;;      (~> f-stx (expand-once) (syntax->datum))
-;;      '(define (foo . opt) opt))))
+  (test-case
+      "defn - rest-arg only"
+   (let ((f-stx #'(defn foo (& opt) opt)))
+     (check-equal?
+      (~> f-stx (expand-once) (syntax->datum))
+      '(define (foo . opt) opt))))
+
+  (test-case
+      "defn - 1 arg + rest-arg"
+    (let ((f-stx #'(defn foo (x & opt) (string-append x (car opt)))))
+      (check-equal?
+       (~> f-stx (expand-once) (syntax->datum))
+       '(define (foo x . opt) (string-append x (car opt))))))
+
   )
