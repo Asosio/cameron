@@ -1,7 +1,15 @@
 #lang racket
 (require threading)
 
-(provide def fn defn)
+;; Parsing syntax
+;; Why: basically the grammar for pattern matching in syntax-parse
+;; file:///opt/racket/share/doc/racket/syntax/Parsing_Syntax.html?q=syntax-parse#%28form._%28%28lib._syntax%2Fparse..rkt%29._syntax-parse%29%29
+
+;; Phases & Reusable Syntax Classes
+;; Why: because syntax classes are cool and can reduce complexity (ESP repetition)
+;; http://docs.racket-lang.org/syntax/Phases_and_Reusable_Syntax_Classes.html
+
+(provide def fn defn case-fn)
 
 ;; Missing test proving hygiene
 ;; e.g. (let ([define "<overwritten>"]) (defn foo [x] x))
@@ -24,6 +32,18 @@
      #`(define (name args ... . r) . body)]
     [(_ name:id (args ...) . body)
      #`(define (name args ...) . body)]))
+
+(begin-for-syntax
+  (define-syntax-class fn-body
+    #:datum-literals (&)
+    (pattern ([(~and args (~not &)) ...
+              (~optional (~seq & r) #:defaults ([r #'()]))]
+              . body))))
+
+(define-syntax (case-fn stx)
+  (syntax-parse stx
+    [(_ fns:fn-body ...)
+     #`(case-lambda [(fns.args ... . fns.r) . fns.body] ...)]))
 
 (module+ test
   (require rackunit)
@@ -121,4 +141,33 @@
      (let ([define (lambda (x . r) "overwritten")])
        (defn f [x y] (+ x y)) (f 1 3))
      4))
+
+  ;; case-fn tests
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  (test-case
+      "case-fn - test application"
+    (local [(def cfn (case-fn
+                      [(x) x]
+                      [(x y z & r) (apply + x y z r)]))]
+           ;; Test application of the first function
+           (check-equal? (cfn 10) 10)
+           (check-equal? (cfn 11) 11)
+           ;; check that the cfn (defined above) rightly doesn't accept 2 arguments
+           ;; (ensures that not all fn's erroneously have a rst argument component)
+           (check-equal?
+            (with-handlers ([exn:fail:contract:arity? (lambda [e] "99 problems")])
+              (cfn 1 2)) "99 problems")
+           ;; check that rest arguments are properly filled
+           (check-equal? (cfn 0 0 0 1 7 13) 21)))
+
+  (test-case
+      "case-fn - test expansion"
+    (check-equal?
+     (~> #'(case-fn [(x) (println x)]
+                    [(x y) (println (string-join '(x y) "-"))]
+                    [(x y & r) (println (string-join (list* x y r) "-"))])
+         (expand-once) (syntax->datum))
+     '(case-lambda [(x) (println x)]
+                   [(x y) (println (string-join '(x y) "-"))]
+                   [(x y . r) (println (string-join (list* x y r) "-"))])))
   )
