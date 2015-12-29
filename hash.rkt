@@ -5,8 +5,10 @@
  (only-in racket [hash-ref get]))
 
 (provide get
-         make make-i
-         update update!)
+         make make!
+         update update!
+         assoc assoc!
+         dissoc dissoc!)
 
 (begin-for-syntax
   (define (pair-list lst)
@@ -19,7 +21,7 @@
 
 ;; Make mutable hash
 ;; (mh a 1 b 2) === (make-hash '((a . 1) (b . 2))
-(define-syntax (make stx)
+(define-syntax (make! stx)
   (define xs (cdr (syntax->list stx)))
   (if (even? (length xs))
       (let ((res (pair-list xs)))
@@ -31,7 +33,7 @@
 
 ;; Make immutable hash
 ;; (ih a 1 b 2) === (make-immutabl-hash '((a . 1) (b . 2)))
-(define-syntax (make-i stx)
+(define-syntax (make stx)
   (define xs (cdr (syntax->list stx)))
   (if (even? (length xs))
       (let ((res (pair-list xs)))
@@ -54,9 +56,7 @@
 ;; (get-in h [ks] &def)  -- recursive variant of hash-ref
 
 ;; (update-in h [k &ks] f & f-args)
-;; (assoc h k v)
-;; (assoc h k v [kvs])
-;; (dissoc h k &ks)
+
 ;; (select-keys h [key-seq])
 ;; merge
 ;; merge-in
@@ -70,7 +70,7 @@
 ;; * a new hash is returned - to update in-place, use update!
 ;; * if k doesn't already exist, the value passed to 'f' will be #f
 (define (update h k f . f-args)
-  (dict-set* h k (apply f (get h k #f) f-args)))
+  (hash-set h k (apply f (get h k #f) f-args)))
 
 ;; Updates a value in a hash, where k is a key and f is a
 ;; function that will take the old value and any supplied args
@@ -81,36 +81,58 @@
 ;; * updates are in-place (see 'update' for alternatives)
 ;; * if k doesn't already exist, the value passed to 'f' will be #f
 (define (update! h k f . f-args)
-  (dict-set*! h k (apply f (get h k #f) f-args))
+  (hash-set! h k (apply f (get h k #f) f-args))
   h)
 
-;;(define (assoc h 
+(define (assoc h . kv-args)
+  (apply hash-set* h kv-args)
+  h)
+
+(define (assoc! h . kv-args)
+  (apply hash-set*! h kv-args)
+  h)
+
+(define dissoc
+  (case-lambda
+    [(h k) (begin (hash-remove h k) h)]
+    [(h . ks)
+     (begin (for ([k ks]) (hash-remove h k)) h)]))
+
+(define dissoc!
+  (case-lambda
+    [(h k) (begin (hash-remove! h k) h)]
+    [(h . ks)
+     (begin (for ([k ks]) (hash-remove! h k)) h)]))
+
+(require racket/hash)
+;;(hash-union)
+
 
 (module+ test
   (require rackunit)
   (test-case
       ""
     (check-equal?
-     (~> #'(make 'a 1 'b 2) (expand-once) (syntax->datum))
+     (~> #'(make! 'a 1 'b 2) (expand-once) (syntax->datum))
      '(make-hash '(('a . 1) ('b . 2)))))
 
   (test-case
       ""
     (check-equal?
-     (~> #'(make a 1 b 2) (expand-once) (syntax->datum))
+     (~> #'(make! a 1 b 2) (expand-once) (syntax->datum))
      '(make-hash '((a . 1) (b . 2)))))
 
   (test-case
       ""
     (check-equal?
-     (~> #'(make-i a 1 b 2) (expand-once) (syntax->datum))
+     (~> #'(make a 1 b 2) (expand-once) (syntax->datum))
      '(make-immutable-hash '((a . 1) (b . 2)))))
 
   ;; get
   ;;;;;;
   (test-case
       "get key (existing)"
-    (define hm (make a1 "a1" 'a2 "a2" "a3" "a3"))
+    (define hm (make! a1 "a1" 'a2 "a2" "a3" "a3"))
 
     (check-equal? (get hm 'a1 #f) "a1")
     (check-equal? (get hm ''a2 #f) "a2")
@@ -126,54 +148,54 @@
   (test-case
       "update - single-arg update-fn"
     (check-equal?
-     (let ((hm (make-i a "a" b "b")))
+     (let ((hm (make a "a" b "b")))
        (update hm 'a (lambda [ov] "new")))
-     (make-i a "new" b "b")))
+     (make a "new" b "b")))
 
   (test-case
       "update - 2-arg update-fn"
     (check-equal?
-     (let ((hm (make-i a "a" b "b")))
+     (let ((hm (make a "a" b "b")))
        (update hm 'a (lambda [ov a1] (string-append ov a1)) "-new"))
-     (make-i a "a-new" b "b")))
+     (make a "a-new" b "b")))
 
   (test-case
       "update - 3-arg update-fn"
     (check-equal?
-     (let ((hm (make-i a "a" b "b")))
+     (let ((hm (make a "a" b "b")))
        (update hm 'a (lambda [ov a1 a2] (string-append a1 ov a2)) "<" ">"))
-     (make-i a "<a>" b "b")))
+     (make a "<a>" b "b")))
 
   (test-case
       "update - ensure original isn't modified"
     (check-equal?
-     (let ((hm (make-i a "a" b "b")))
+     (let ((hm (make a "a" b "b")))
        (update hm 'a (lambda [ov] "x"))
        hm)
-     (make-i a "a" b "b")))
+     (make a "a" b "b")))
 
   (test-case
       "update - update a string key"
     (check-equal?
-     (let ((hm (make-i "akey" "a" "bkey" "b")))
+     (let ((hm (make "akey" "a" "bkey" "b")))
        (update hm "bkey" (lambda [ov] "x")))
-     (make-i "akey" "a" "bkey" "x")))
+     (make "akey" "a" "bkey" "x")))
 
   ;; assume update! deals with this just like update (hence fewer tests)
   (test-case
       "update! - 2-arg update-fn"
     (check-equal?
-     (let ((hm (make a "a" b "b")))
+     (let ((hm (make! a "a" b "b")))
        (update! hm 'a (lambda [ov a1] (string-append ov a1)) "-new"))
-     (make a "a-new" b "b")))
+     (make! a "a-new" b "b")))
 
   (test-case
       "update! - ensure original is modified"
     (check-equal?
-     (let ((hm (make a "a" b "b")))
+     (let ((hm (make! a "a" b "b")))
        (update! hm 'b (lambda [ov] (string-append ov "-new")))
        hm)
-     (make a "a" b "b-new")))
+     (make! a "a" b "b-new")))
   
   )
 
