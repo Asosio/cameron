@@ -2,13 +2,20 @@
 (require
  threading
  (for-syntax (only-in racket/list empty?))
- (only-in racket [hash-ref get]))
+ (only-in racket
+          [hash-ref get]))
 
-(provide get
-         make make!
-         update update!
-         assoc assoc!
-         dissoc dissoc!)
+(provide
+ make make!
+ update update!
+ assoc assoc!
+ dissoc dissoc!
+ get
+ (rename-out [-map map]
+             [hash-keys keys]))
+
+(define (-map proc hsh)
+  (hash-map hsh proc))
 
 (begin-for-syntax
   (define (pair-list lst)
@@ -47,6 +54,10 @@
 ;; (get h k &def) -- alias hash-ref
 ;; (update h k f &f-args)
 ;; (update! h k f &f-args)
+;; (assoc h [k v] ...)
+;; (assoc! h [k v] ...)
+;; (dissoc h k ...)
+;; (dissoc! h k ...)
 
 ;; TODO
 ;;;;;;;
@@ -195,7 +206,5 @@
      (let ((hm (make! a "a" b "b")))
        (update! hm 'b (lambda [ov] (string-append ov "-new")))
        hm)
-     (make! a "a" b "b-new")))
-  
-  )
+     (make! a "a" b "b-new"))))
 
