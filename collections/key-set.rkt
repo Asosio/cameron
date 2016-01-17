@@ -31,15 +31,10 @@
            (only-in racket/dict dict-ref)
            racket/hash)
 
+  ;; key-set - immutable dicts
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   (test-case
-      "key-set - mutable dict tests"
-    (local [(def d (make-hash '((a . 1) (c . 3))))]
-           (check-equal? (dict-ref (key-set d 'b 2) 'b) 2)
-           ;; Ensure the value is persisted in the dictionary
-           (check-equal? (dict-ref d 'b #f) 2)))
-
-  (test-case
-      "key-set - list-as-dict tests"
+      "list-as-dict tests"
     (local [(def d (list '((a . 1) (c . 3))))]
            ;; Even though lists are technically mutable a list of pairs
            ;; is implemented to act as an immutable dict.
@@ -47,10 +42,8 @@
            (check-equal? (dict-ref d 'b #f) #f)
            (check-equal? (dict-ref d 'b #t) #t)))
 
-  ;; key-set - immutable dicts
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   (test-case
-      "key-set - immutable dicts - add an entry"
+      "immutable dicts - add an entry"
     (local [(def ih (make-immutable-hash '((a . 1) (d . 4))))]
            ;; add an entry
            (let ([ret-dict (key-set ih 'e 10)])
@@ -59,7 +52,7 @@
            (check-equal? ih (make-immutable-hash '((a . 1) (d . 4))))))
 
   (test-case
-      "key-set - immutable dicts - overwrite an entry"
+      "immutable dicts - overwrite an entry"
     (local [(def ih (make-immutable-hash '((a . 1) (d . 4))))]
            ;; add an entry
            (let ([ret-dict (key-set ih 'a 10)])
@@ -68,7 +61,7 @@
            (check-equal? ih (make-immutable-hash '((a . 1) (d . 4))))))
 
   (test-case
-      "key-set - immutable dicts - add several entries"
+      "immutable dicts - add several entries"
     (local [(def ih (make-immutable-hash '((a . 1) (d . 4))))]
            ;; add several entries
            (let ([ret-dict (key-set ih 'd 7 'e 10 'f 25)])
@@ -79,7 +72,7 @@
   ;; key-set - mutable dicts
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   (test-case
-      "key-set - mutable dicts - add an entry"
+      "mutable dicts - add an entry"
     (local [(def mh (make-hash '((a . 1) (d . 4))))]
            ;; add an entry
            (let ([ret-dict (key-set mh 'e 10)])
@@ -88,7 +81,7 @@
              (check-equal? mh ret-dict))))
 
   (test-case
-      "key-set - mutable dicts - overwrite an entry"
+      "mutable dicts - overwrite an entry"
     (local [(def mh (make-hash '((a . 1) (d . 4))))]
            ;; overwrite an entry
            (let ([ret-dict (key-set mh 'a 10)])
@@ -97,7 +90,7 @@
              (check-equal? mh ret-dict))))
 
   (test-case
-      "key-set - mutable dicts - add several entries"
+      "mutable dicts - add several entries"
     (local [(def mh (make-hash '((a . 1) (d . 4))))]
            ;; add several entries
            (let ([ret-dict (key-set mh 'd 7 'e 10 'f 25)])
@@ -108,7 +101,7 @@
   ;; key-set - immutable sets
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   (test-case
-      "key-set - immutable sets - add an entry"
+      "immutable sets - add an entry"
     (local [(def is (set 1 3 5))]
            ;; add an entry
            (let ([ret-set (key-set is 4)])
@@ -117,7 +110,7 @@
            (check-equal? is (set 1 3 5))))
 
   (test-case
-      "key-set - immutable sets - add several entries"
+      "immutable sets - add several entries"
     (local [(def is (set 1 3 5))]
            ;; add an entry
            (let ([ret-set (key-set is 4 10 15)])
@@ -125,10 +118,10 @@
            ;; ensure modification is not in-place
            (check-equal? is (set 1 3 5))))
 
-  ;; key-set - mutable set
+  ;; key-set - mutable sets
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   (test-case
-      "key-set! - mutable sets - add an entry"
+      "mutable sets - add an entry"
     (local [(def is (mutable-set 1 3 5))]
            ;; add an entry
            (let ([ret-set (key-set is 4)])
@@ -137,7 +130,7 @@
            (check-equal? is (mutable-set 1 3 5 4))))
 
   (test-case
-      "key-set! - mutable sets - add several entries"
+      "mutable sets - add several entries"
     (local [(def is (mutable-set 1 3 5))]
            ;; add an entry
            (let ([ret-set (key-set is 4 10 15)])
