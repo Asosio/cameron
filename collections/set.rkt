@@ -1,11 +1,18 @@
 #lang racket/base
 
 (require
+ racket/contract
  (only-in racket/list first rest)
- (only-in racket/set set-add set-add! set-remove set-remove!)
+ (only-in racket/set set? set-mutable? set-add set-add! set-remove set-remove!)
  cameron/defs)
 
 ;; TODO - can remove the explicit (s k & ks) setup (case-fn matching solves the case of zero args)
+(provide
+ (contract-out
+  [assoc   (->* (set? any/c) () #:rest (listof any/c) set?)]
+  [assoc!  (->* (set-mutable? any/c) () #:rest (listof any/c) set-mutable?)]
+  [dissoc  (->* (set? any/c) () #:rest (listof any/c) set?)]
+  [dissoc! (->* (set-mutable? any/c) () #:rest (listof any/c) set-mutable?)]))
 
 (def assoc
   (case-fn
