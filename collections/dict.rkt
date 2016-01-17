@@ -1,14 +1,22 @@
 #lang racket/base
 
 (require
+ (only-in racket/function negate conjoin)
  (only-in racket/list first rest)
  racket/contract
  cameron/defs
  racket/dict)
 
 (provide
- assoc assoc!
- dissoc dissoc!)
+ dict-immutable?
+ (contract-out
+  [assoc   (->* (dict? any/c any/c) () #:rest (listof any/c) dict-immutable?)]
+  [assoc!  (->* (dict-mutable? any/c any/c) () #:rest (listof any/c) dict-mutable?)]
+  [dissoc  (->* (dict? any/c) () #:rest (listof any/c) dict?)]
+  [dissoc! (->* (dict-mutable? any/c) () #:rest (listof any/c) dict-mutable?)]))
+
+(def dict-immutable?
+  (conjoin (negate dict-mutable?) dict?))
 
 (def assoc
   (case-fn

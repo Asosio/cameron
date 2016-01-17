@@ -2,15 +2,14 @@
 
 (require racket/generic
          (only-in racket/function negate conjoin)
-         (only-in racket/dict dict? dict-set dict-set!)
+         (only-in racket/dict dict-mutable? dict? dict-set dict-set!)
          (prefix-in dict- cameron/collections/dict)
+         (prefix-in set- cameron/collections/set)
          cameron/defs)
 
 (provide
  gen:key-set key-set? key-set/c
  key-set)
-
-(def mutable? (negate immutable?))
 
 (defn -dict-set! [d & args]
   (apply dict-set! d args)
@@ -20,12 +19,12 @@
   (key-set key-set k v)
   #:defaults
   ([(conjoin dict? immutable?)
-    (def key-set dict-set)]
+    (def key-set dict-assoc)]
    ;; regular list of pairs
-   [(conjoin dict? mutable? list?) 
-    (def key-set dict-set)]
-   [(conjoin dict? mutable?)
-    (def key-set -dict-set!)]))
+   [(conjoin dict? list?) 
+    (def key-set dict-assoc)]
+   [dict-mutable?
+    (def key-set dict-assoc!)]))
 
 ;; TODO - missing multiple assignment tests (if wanted)
 (module+ test
