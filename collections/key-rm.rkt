@@ -1,26 +1,26 @@
 #lang racket/base
 
 (require racket/generic
-         cameron/defs
-         (only-in racket/dict dict?)
-         (only-in racket/function negate conjoin)
-         (only-in cameron/collections/dict dict-dissoc dict-dissoc!))
+         (only-in racket/require multi-in)
+         (prefix-in b: (only-in racket/set set mutable-set))
+         (prefix-in c/ (multi-in cameron/collections [dict set]))
+         cameron/defs)
 
 (provide
  gen:key-rm key-rm? key-rm/c
  key-rm)
 
-(def mutable? (negate immutable?))
-
 (define-generics key-rm
   (key-rm key-rm k . ks)
   #:defaults
-  ([(conjoin dict? immutable?)
-    (def key-rm dict-dissoc)]
-   [(conjoin dict? mutable? list?)
-    (def key-rm dict-dissoc)]
-   [(conjoin dict? mutable?)
-    (def key-rm dict-dissoc!)]))
+  ([c/dict-immutable?
+    (def key-rm c/dict-dissoc)]
+   [c/dict-mutable?
+    (def key-rm c/dict-dissoc!)]
+   [c/set-immutable?
+    (def key-rm c/set-dissoc)]
+   [c/set-mutable?
+    (def key-rm c/set-dissoc!)]))
 
 (module+ test
   (require rackunit
@@ -28,69 +28,82 @@
            (only-in racket/dict dict-ref)
            racket/hash)
 
+  ;; key-rm - immutable dicts
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   (test-case
-      "key-rm - immutable dict  - rm single key tests"
-    (local [(def d (make-immutable-hash '((a . 1) (c . 3) (d . 4) (e . 5))))]
-           ;; ensure a's presence
-           (check-equal? (dict-ref d 'a) 1)
-           ;; returned dict has no 'a entry
-           (check-equal? (dict-ref (key-rm d 'a) 'a #f) #f)
-           ;; change should NOT persist
-           (check-equal? (dict-ref d 'a #f) 1)
-
-           ;;rm non-existing value
-           (check-equal? (key-rm d 'f) d)))
+      "immutable dicts - remove an entry"
+    (local [(def ih (make-immutable-hash '((a . 1) (c . 3) (d . 4))))]
+           ;; remove an entry
+           (let ([ret-dict (key-rm ih 'd)])
+             (check-equal? ret-dict (make-immutable-hash '((a . 1) (c . 3)))))
+           ;; ensure modification is not in-place
+           (check-equal? ih (make-immutable-hash '((a . 1) (c . 3) (d . 4))))))
 
   (test-case
-      "key-rm - immutable dict  - rm multiple keys tests"
-    (local [(def d (make-immutable-hash '((a . 1) (c . 3) (d . 4) (e . 5))))]
-           ;; ensure a & d's presence
-           (check-equal? (dict-ref d 'a) 1)
-           (check-equal? (dict-ref d 'd) 4)
+      "immutable dicts - remove several entries"
+    (local [(def ih (make-immutable-hash '((a . 1) (b . 2) (c . 3) (d . 4) (e . 5) (f . 6))))]
+           ;; remove several entries
+           (let ([ret-dict (key-rm ih 'b 'e 'f)])
+             (check-equal? ret-dict (make-immutable-hash '((a . 1) (c . 3) (d . 4))))
+             ;; ensure modification is in-place
+             (check-equal? ih (make-immutable-hash '((a . 1) (b . 2) (c . 3) (d . 4) (e . 5) (f . 6)))))))
 
-           (let ([ret-dict (key-rm d 'a 'd)])
-             (check-equal? ret-dict (make-immutable-hash '((c . 3) (e . 5)))))
-
-           ;; ensure changes didn't modify in-place
-           (check-equal? d (make-immutable-hash '((a . 1) (c . 3) (d . 4) (e . 5))))))
-           
-;;  (test-case
-;;      "key-rm - dict list  - rm single key tests")
-
-;;  (test-case
-;;      "key-rm - dict list  - rm multiple keys tests")
+  ;; key-rm - mutable dicts
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  (test-case
+      "mutable dicts - remove an entry"
+    (local [(def mh (make-hash '((a . 1) (c . 3 ) (d . 4))))]
+           ;; remove an entry
+           (let ([ret-dict (key-rm mh 'd)])
+             (check-equal? ret-dict (make-hash '((a . 1) (c . 3))))
+             ;; ensure modification is in-place
+             (check-equal? mh ret-dict))))
 
   (test-case
-      "key-rm - mutable dict - rm single key tests"
-    (local [(def d (make-hash '((a . 1) (c . 3) (d . 4) (e . 5))))]
-           ;; ensure a's presence
-           (check-equal? (dict-ref d 'a) 1)
-           ;; returned dict has no 'a entry
-           (check-equal? (dict-ref (key-rm d 'a) 'a #f) #f)
-           ;; change should persist
-           (check-equal? (dict-ref d 'a #f) #f)
+      "mutable dicts - remove several entries"
+    (local [(def mh (make-hash '((a . 1) (b . 2) (c . 3) (d . 4) (e . 5) (f . 6))))]
+           ;; remove several entries
+           (let ([ret-dict (key-rm mh 'b 'e 'f)])
+             (check-equal? ret-dict (make-hash '((a . 1) (c . 3) (d . 4))))
+             ;; ensure modification is in-place
+             (check-equal? mh ret-dict))))
 
-           ;;rm non-existing value
-           (check-equal? (key-rm d 'f) d)))
+  ;; key-rm - immutable sets
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  (test-case
+      "immutable sets - remove an entry"
+    (local [(def is (b:set 1 3 5))]
+           ;; remove an entry
+           (let ([ret-set (key-rm is 3)])
+             (check-equal? ret-set (b:set 1 5)))
+           ;; ensure modification is not in-place
+           (check-equal? is (b:set 1 3 5))))
 
   (test-case
-      "key-rm - mutable dict - rm multiple keys tests"
-    (local [(def d (make-hash '((a . 1) (c . 3) (d . 4) (e . 5))))]
-           ;; ensure keys to be rm'ed are present
-           (check-equal? (dict-ref d 'a) 1)
-           (check-equal? (dict-ref d 'd) 4)
-           (check-equal? (dict-ref d 'e) 5)
+      "immutable sets - remove several entries"
+    (local [(def is (b:set 1 3 5))]
+           ;; remove an entry
+           (let ([ret-set (key-rm is 1 5)])
+             (check-equal? ret-set (b:set 3)))
+           ;; ensure modification is not in-place
+           (check-equal? is (b:set 1 3 5))))
 
-           ;; check that returned dictionary lacks the rm'ed keys
-           (let ([ret-dict (key-rm d 'a 'd 'e)])
-             (check-equal? (dict-ref ret-dict 'a #f) #f)
-             (check-equal? (dict-ref ret-dict 'd #f) #f)
-             (check-equal? (dict-ref ret-dict 'e #f) #f))
+  ;; key-rm - mutable sets
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  (test-case
+      "mutable sets - remove an entry"
+    (local [(def is (b:mutable-set 4 1 3 5 10 15))]
+           ;; remove an entry
+           (let ([ret-set (key-rm is 5)])
+             (check-equal? ret-set (b:mutable-set 4 1 3 10 15)))
+           ;; ensure modification is in-place
+           (check-equal? is (b:mutable-set 1 3 4 10 15))))
 
-           ;; ensure changes were persisted
-           (check-equal? (dict-ref d 'a #f) #f)
-           (check-equal? (dict-ref d 'd #f) #f)
-           (check-equal? (dict-ref d 'e #f) #f)
-
-           ;; rm non-existing values
-           (check-equal? (key-rm d 'f 'g 'h) d))))
+  (test-case
+      "mutable sets - remove several entries"
+    (local [(def is (b:mutable-set 4 1 3 5 10 15))]
+           ;; remove an entry
+           (let ([ret-set (key-rm is 4 10 15)])
+             (check-equal? ret-set (b:mutable-set 1 3 5)))
+           ;; ensure modification is in-place
+           (check-equal? is (b:mutable-set 1 3 5)))))
