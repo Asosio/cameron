@@ -1,6 +1,6 @@
-#lang racket
-(require threading)
-
+#lang racket/base
+(require
+ (for-syntax racket/base))
 ;; Parsing syntax
 ;; Why: basically the grammar for pattern matching in syntax-parse
 ;; file:///opt/racket/share/doc/racket/syntax/Parsing_Syntax.html?q=syntax-parse#%28form._%28%28lib._syntax%2Fparse..rkt%29._syntax-parse%29%29
@@ -46,7 +46,10 @@
      #`(case-lambda [(fns.args ... . fns.r) . fns.body] ...)]))
 
 (module+ test
-  (require rackunit)
+  (require rackunit
+           threading
+           (only-in racket/local local)
+           (only-in racket/string string-join))
   ;; def tests
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   (test-case
@@ -169,5 +172,4 @@
          (expand-once) (syntax->datum))
      '(case-lambda [(x) (println x)]
                    [(x y) (println (string-join '(x y) "-"))]
-                   [(x y . r) (println (string-join (list* x y r) "-"))])))
-  )
+                   [(x y . r) (println (string-join (list* x y r) "-"))]))))
