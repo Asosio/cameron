@@ -11,8 +11,6 @@
 
 (provide def fn defn case-fn)
 
-;; Missing test proving hygiene
-;; e.g. (let ([define "<overwritten>"]) (defn foo [x] x))
 (require (for-syntax syntax/parse))
 (define-syntax (def stx)
   (syntax-parse stx
@@ -60,29 +58,29 @@
 
   ;; fn tests
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;  (test-case
-;;      "[fn] no-args function"
-;;    (check-equal?
-;;     (~>  #'(fn () 10) (expand-syntax-to-top-form) (syntax->datum))
-;;     '(#%expression (lambda () 10))))
+  (test-case
+      "[fn] no-args function"
+    (check-equal?
+     (~>  #'(fn () 10) (expand-syntax-to-top-form) (syntax->datum))
+     '(#%expression (lambda () 10))))
 
-;;  (test-case
-;;      "[fn] single-arg function"
-;;    (check-equal?
-;;     (~>  #'(fn (x) (+ x 10)) (expand-syntax-to-top-form) (syntax->datum))
-;;     '(#%expression (lambda (x) (+ x 10)))))
+  (test-case
+      "[fn] single-arg function"
+    (check-equal?
+     (~>  #'(fn (x) (+ x 10)) (expand-syntax-to-top-form) (syntax->datum))
+     '(#%expression (lambda (x) (+ x 10)))))
 
-;;   (test-case
-;;      "[fn] multi-arg function"
-;;    (check-equal?
-;;     (~>  #'(fn (x y) (+ x y)) (expand-syntax-to-top-form) (syntax->datum))
-;;     '(#%expression (lambda (x y) (+ x y)))))
+   (test-case
+      "[fn] multi-arg function"
+    (check-equal?
+     (~>  #'(fn (x y) (+ x y)) (expand-syntax-to-top-form) (syntax->datum))
+     '(#%expression (lambda (x y) (+ x y)))))
 
-;;    (test-case
-;;      "[fn] multi-body function"
-;;    (check-equal?
-;;     (~>  #'(fn (x y) (println "stuff") (+ x y)) (expand-syntax-to-top-form) (syntax->datum))
-;;     '(#%expression (lambda (x y) (println "stuff") (+ x y)))))
+    (test-case
+      "[fn] multi-body function"
+    (check-equal?
+     (~>  #'(fn (x y) (println "stuff") (+ x y)) (expand-syntax-to-top-form) (syntax->datum))
+     '(#%expression (lambda (x y) (println "stuff") (+ x y)))))
 
   ;; defn tests
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
