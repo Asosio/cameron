@@ -4,19 +4,22 @@
  racket/contract
  (only-in racket/function negate conjoin)
  (only-in racket/list first rest)
- (prefix-in b: (only-in racket/set set? set-mutable? set-add set-add! set-remove set-remove!))
+ (prefix-in b: (only-in racket/set mutable-set set? set-mutable? set-add set-add! set-remove set-remove!))
  cameron/defs)
 
 ;; TODO - can remove the explicit (s k & ks) setup (case-fn matching solves the case of zero args)
 (provide
  set-immutable? set-immutable/c
  set-mutable? set-mutable/c
+ set!
  (contract-out
   [set-assoc   (->* (b:set? any/c) () #:rest (listof any/c) b:set?)]
   [set-assoc!  (->* (b:set-mutable? any/c) () #:rest (listof any/c) b:set-mutable?)]
   [set-dissoc  (->* (b:set? any/c) () #:rest (listof any/c) b:set?)]
   [set-dissoc! (->* (b:set-mutable? any/c) () #:rest (listof any/c) b:set-mutable?)]))
 
+;; contracts
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (def set-immutable?
   (conjoin b:set? (negate b:set-mutable?)))
 
@@ -28,6 +31,12 @@
 (def set-mutable/c
   (flat-named-contract 'mutable-set set-mutable?))
 
+;; constructor functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(def set! b:mutable-set)
+
+;; assoc & dissoc
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (def set-assoc
   (case-fn
    [(s k) (b:set-add s k)]

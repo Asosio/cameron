@@ -4,6 +4,9 @@
  (only-in racket/function negate conjoin)
  (only-in racket/list first rest)
  (prefix-in b: (only-in racket/dict dict-mutable?))
+ (for-syntax racket/base
+             (only-in cameron/defs def defn)
+             (only-in racket cond empty?))
  racket/contract
  cameron/defs
  racket/dict)
@@ -11,12 +14,15 @@
 (provide
  dict-immutable? dict-immutable/c
  dict-mutable? dict-mutable/c
+ dict dict!
  (contract-out
   [dict-assoc   (->* (dict? any/c any/c) () #:rest (listof any/c) dict-immutable?)]
   [dict-assoc!  (->* (dict-mutable? any/c any/c) () #:rest (listof any/c) dict-mutable?)]
   [dict-dissoc  (->* (dict? any/c) () #:rest (listof any/c) dict?)]
   [dict-dissoc! (->* (dict-mutable? any/c) () #:rest (listof any/c) dict-mutable?)]))
 
+;; contracts
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (def dict-immutable?
   (conjoin dict? (negate b:dict-mutable?)))
 
@@ -30,6 +36,43 @@
 (def dict-mutable/c
   (flat-named-contract 'mutable-dict b:dict-mutable?))
 
+;; constructor functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(begin-for-syntax
+  ;; convert a list of arguments to a list of cons'ed pairs.
+  (defn pair-list [lst]
+    (defn iter [acc lst]
+      (cond
+        [(empty? lst) acc]
+        [else (iter (append acc (list (cons (car lst) (cadr lst))))
+                    (cddr lst))]))
+    (iter '() lst)))
+
+;; Make mutable hash
+;; (dict! a 1 b 2) === (make-hash '((a . 1) (b . 2))
+(define-syntax (dict! stx)
+  (def xs (cdr (syntax->list stx)))
+  (if (even? (length xs))
+      (let ((res (pair-list xs)))
+        #`(make-hash '#,res))
+      (raise-syntax-error #f
+                          "expects an even number of forms"
+                          stx
+                          #'xs)))
+
+;; Make immutable hash
+;; (dict a 1 b 2) === (make-immutable-hash '((a . 1) (b . 2)))
+(define-syntax (dict stx)
+  (def xs (cdr (syntax->list stx)))
+  (if (even? (length xs))
+      (let ((res (pair-list xs)))
+        #`(make-immutable-hash '#,res))
+      (raise-syntax-error #f
+                          "expects an even number of forms"
+                          stx #'xs)))
+
+;; assoc & dissoc
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (def dict-assoc
   (case-fn
    [(d k v) (dict-set d k v)]
