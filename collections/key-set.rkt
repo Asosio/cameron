@@ -1,7 +1,6 @@
 #lang racket/base
 
 (require racket/generic
-         (only-in racket/function negate conjoin)
          (only-in racket/dict dict-mutable?)
          (only-in racket/set set mutable-set set-mutable?)
          racket/require
