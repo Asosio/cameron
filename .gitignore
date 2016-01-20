@@ -1,1 +1,5 @@
 **/*~
+**/compiled/**/*
+*/scribble/**/*.css
+*/scribble/**/*.html
+*/scribble/**/*.js
