@@ -5,7 +5,7 @@
          (only-in racket/dict dict? dict-has-key?)
          (only-in racket/local local)
          (only-in racket/set set? set-member?)
-         (only-in cameron/strings substring?))
+         (only-in racket/string string-contains?))
 
 (provide
  gen:has-able has-able? has-able/c
@@ -31,7 +31,7 @@
    [dict?
     (def has? dict-has-key?)]
    [string?
-    (def has? substring?)]))
+    (def has? string-contains?)]))
 
 (module+ test
   (require rackunit
