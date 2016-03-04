@@ -1,6 +1,7 @@
 #lang racket
 (require "defs.rkt"
          threading
+         "collections/list.rkt"
          "collections/dict.rkt"
          "collections/set.rkt"
          "collections/has.rkt"
@@ -17,6 +18,7 @@
              lambda)
  (all-from-out "defs.rkt"
                threading
+               "collections/list.rkt"
                "collections/dict.rkt"
                "collections/set.rkt"
                "collections/has.rkt"
