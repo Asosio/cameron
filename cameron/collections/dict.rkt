@@ -5,21 +5,30 @@
  (only-in racket/list first rest)
  (prefix-in b: (only-in racket/dict dict-mutable?))
  (for-syntax racket/base
+             syntax/parse
              (only-in cameron/defs def defn)
              (only-in racket cond empty?))
  racket/contract
+ (only-in cameron/collections/list list->listof-pairs)
  cameron/defs
  racket/dict)
 
 (provide
  dict-immutable? dict-immutable/c
  dict-mutable? dict-mutable/c
- dict dict!
  (contract-out
+  [dict         (->* () () #:rest (listof any/c) dict-immutable?)]
+  [dict!        (->* () () #:rest (listof any/c) dict-mutable?)]
+  [list->dict   (->* ((listof any/c)) () dict-immutable?)]
+  [list->dict!  (->* ((listof any/c)) () dict-mutable?)]
+  [listof-pairs->dict (->* ((listof pair?)) () dict-immutable?)]
+  [listof-pairs->dict! (->* ((listof pair?)) () dict-mutable?)]
   [dict-assoc   (->* (dict? any/c any/c) () #:rest (listof any/c) dict-immutable?)]
   [dict-assoc!  (->* (dict-mutable? any/c any/c) () #:rest (listof any/c) dict-mutable?)]
   [dict-dissoc  (->* (dict? any/c) () #:rest (listof any/c) dict?)]
-  [dict-dissoc! (->* (dict-mutable? any/c) () #:rest (listof any/c) dict-mutable?)]))
+  [dict-dissoc! (->* (dict-mutable? any/c) () #:rest (listof any/c) dict-mutable?)]
+  [dict-merge   (->* (dict-immutable/c) () #:rest (listof dict-immutable/c) dict-immutable/c)]
+  [dict-merge!  (->* (dict-mutable/c) () #:rest (listof dict-mutable/c) dict-mutable/c)]))
 
 ;; contracts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -38,38 +47,25 @@
 
 ;; constructor functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(begin-for-syntax
-  ;; convert a list of arguments to a list of cons'ed pairs.
-  (defn pair-list [lst]
-    (defn iter [acc lst]
-      (cond
-        [(empty? lst) acc]
-        [else (iter (append acc (list (cons (car lst) (cadr lst))))
-                    (cddr lst))]))
-    (iter '() lst)))
+(defn dict [& args]
+  (make-immutable-hash (list->listof-pairs args)))
 
-;; Make mutable hash
-;; (dict! a 1 b 2) === (make-hash '((a . 1) (b . 2))
-(define-syntax (dict! stx)
-  (def xs (cdr (syntax->list stx)))
-  (if (even? (length xs))
-      (let ((res (pair-list xs)))
-        #`(make-hash '#,res))
-      (raise-syntax-error #f
-                          "expects an even number of forms"
-                          stx
-                          #'xs)))
+(defn dict! [& args]
+  (make-hash (list->listof-pairs args)))
 
-;; Make immutable hash
-;; (dict a 1 b 2) === (make-immutable-hash '((a . 1) (b . 2)))
-(define-syntax (dict stx)
-  (def xs (cdr (syntax->list stx)))
-  (if (even? (length xs))
-      (let ((res (pair-list xs)))
-        #`(make-immutable-hash '#,res))
-      (raise-syntax-error #f
-                          "expects an even number of forms"
-                          stx #'xs)))
+;; list -> dict
+(defn list->dict [lst]
+  (make-immutable-hash (list->listof-pairs lst)))
+
+(defn list->dict! [lst]
+  (make-hash (list->listof-pairs lst)))
+
+;; list of pairs -> dict
+(defn listof-pairs->dict [lst]
+  (make-immutable-hash lst))
+
+(defn listof-pairs->dict! [lst]
+  (make-hash lst))
 
 ;; assoc & dissoc
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -209,3 +205,97 @@
              (check-equal? ret-dict (make-hash '((a . 1) (c . 3) (d . 4))))
              ;; ensure modification is in-place
              (check-equal? mh ret-dict)))))
+
+;; assoc & dissoc
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn -dict-merge
+  [assoc-fn]
+  (def merge-fn
+    (case-fn [(d) d]
+             [(d1 d2) (let loop ([res d1] [next (dict-iterate-first d2)])
+                        (if next (loop (assoc-fn res (dict-iterate-key d2 next)
+                                                 (dict-iterate-value d2 next))
+                                       (dict-iterate-next d2 next))
+                            res))]
+             [(d1 & ds) (foldl (fn [e acc] (merge-fn acc e)) d1 ds)]))
+  merge-fn)
+
+(defn dict-merge
+  [& args]
+  (apply (-dict-merge dict-assoc) args))
+
+;;TODO - one bug / inconsistency
+;; dict-merge can accept dict!'s as non-first arguments & still work
+;; -- but dict-merge! cannot accept dict's as non-first arguments
+(module+ test
+  (require rackunit
+           (only-in racket/local local)
+           racket/hash)
+  (test-case
+      "dict-merge - immutable dict - one entry"
+    (local [(def d1 (dict 'a 1 'b 2))
+            (def d2 (dict 'c 3))]
+           (let ([ret-dict (dict-merge d1 d2)])
+             (check-equal? ret-dict (dict 'a 1 'b 2 'c 3)))))
+  (test-case
+      "dict-merge - immutable dict - several entries"
+    (local [(def d1 (dict 'a 1 'b 2))
+            (def d2 (dict 'c 3 'd 4 'e 5))]
+           (let ([ret-dict (dict-merge d1 d2)])
+             (check-equal? ret-dict (dict 'a 1 'b 2 'c 3 'd 4 'e 5)))))
+
+  (test-case
+      "dict-merge - immutable dict - multiple dicts"
+    (local [(def d1 (dict 'a 1 'b 2))
+            (def d2 (dict 'c 3 'd 4))
+            (def d3 (dict 'e 5 'f 6 'g 7))
+            (def d4 (dict 'h 8 'i 9 'j 10))]
+           (let ([ret-dict (dict-merge d1 d2 d3 d4)])
+             (check-equal? ret-dict (dict 'a 1 'b 2 'c 3 'd 4 'e 5 'f 6 'g 7 'h 8 'i 9 'j 10)))))
+
+  (test-case
+      "dict-merge - immutable dict - merge preference"
+    (local [(def d1 (dict 'a 1 'b 2 'c 3 'd 4 'e 5))
+            (def d2 (dict 'b "d2" 'c "d2" 'd "d2"))
+            (def d3 (dict 'c "d3" 'd "d3"))]
+           (let ([ret-dict (dict-merge d1 d2 d3)])
+             (check-equal? ret-dict (dict 'a 1 'b "d2" 'c "d3" 'd "d3" 'e 5))))))
+
+(defn dict-merge!
+  [& args]
+  (apply (-dict-merge dict-assoc!) args))
+
+(module+ test
+  (require rackunit
+           (only-in racket/local local)
+           racket/hash)
+  (test-case
+      "dict-merge! - mutable dict - one entry"
+    (local [(def d1 (dict! 'a 1 'b 2))
+            (def d2 (dict! 'c 3))]
+           (let ([ret-dict (dict-merge! d1 d2)])
+             (check-equal? ret-dict (dict! 'a 1 'b 2 'c 3)))))
+  (test-case
+      "dict-merge! - mutable dict - several entries"
+    (local [(def d1 (dict! 'a 1 'b 2))
+            (def d2 (dict! 'c 3 'd 4 'e 5))]
+           (let ([ret-dict (dict-merge! d1 d2)])
+             (check-equal? ret-dict (dict! 'a 1 'b 2 'c 3 'd 4 'e 5)))))
+
+  (test-case
+      "dict-merge! - mutable dict - multiple dicts"
+    (local [(def d1 (dict! 'a 1 'b 2))
+            (def d2 (dict! 'c 3 'd 4))
+            (def d3 (dict! 'e 5 'f 6 'g 7))
+            (def d4 (dict! 'h 8 'i 9 'j 10))]
+           (let ([ret-dict (dict-merge! d1 d2 d3 d4)])
+             (check-equal? ret-dict (dict! 'a 1 'b 2 'c 3 'd 4 'e 5 'f 6 'g 7 'h 8 'i 9 'j 10)))))
+
+  (test-case
+      "dict-merge! - mutable dict - merge preference"
+    (local [(def d1 (dict! 'a 1 'b 2 'c 3 'd 4 'e 5))
+            (def d2 (dict! 'b "d2" 'c "d2" 'd "d2"))
+            (def d3 (dict! 'c "d3" 'd "d3"))]
+           (let ([ret-dict (dict-merge! d1 d2 d3)])
+             (check-equal? ret-dict (dict! 'a 1 'b "d2" 'c "d3" 'd "d3" 'e 5))))))
