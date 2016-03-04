@@ -1,5 +1,6 @@
 #lang racket
 (require "defs.rkt"
+         "compat.rkt"
          threading
          "collections/list.rkt"
          "collections/dict.rkt"
@@ -17,6 +18,7 @@
              define
              lambda)
  (all-from-out "defs.rkt"
+               "compat.rkt" ;; renames etc (cmp to racket)
                threading
                "collections/list.rkt"
                "collections/dict.rkt"
