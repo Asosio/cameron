@@ -76,7 +76,19 @@
     (local [(def msg "failed to correctly identify the first instance to match")]
            (check-equal? (string-indexof-l "there is covariance and contravariance" "variance") 11 msg)
            (check-equal? (string-indexof-l "papaya" "pa" #:offset 2) 2)
-           (check-equal? (string-indexof-l "papaya is papaya" "pa" #:offset 3) 10)))
+           (check-equal? (string-indexof-l "papaya is papaya" "pa" #:offset 3) 10)
+           (check-equal?
+            (string-indexof-l "This is a poodle of bantha poodoo" "poo" #:offset 11) 27)))
+
+  (test-case
+      "string-indexof-l - match multiple instances (offset test)"
+    (local [(def msg "function is expected to respect offset arg")]
+           (check-equal?
+            (string-indexof-l "This is a poodle of bantha poodoo" "poo" #:offset 0) 10 msg)
+           (check-equal?
+            (string-indexof-l "This is a poodle of bantha poodoo" "poo" #:offset 10) 10 msg)
+           (check-equal?
+            (string-indexof-l "This is a poodle of bantha poodoo" "poo" #:offset 11) 27 msg)))
 
   (test-case
       "string-indexof-l - trivially match the empty substring"
@@ -111,6 +123,16 @@
            (check-equal? (string-indexof-r "papaya" "pa" #:offset 3) 0 msg)
            (check-equal? (string-indexof-r "papaya is papaya" "pa" #:offset 5) 2 msg)
            ))
+
+  (test-case
+      "string-indexof-r - match multiple instances (offset test)"
+    (local [(def msg "function is expected to respect offset arg")]
+           (check-equal?
+            (string-indexof-r "This is a poodle of bantha poodoo" "poo" #:offset 0) 27)
+           (check-equal?
+            (string-indexof-r "This is a poodle of bantha poodoo" "poo" #:offset 2) 27)
+           (check-equal?
+            (string-indexof-r "This is a poodle of bantha poodoo" "poo" #:offset 4) 10)))
 
   (test-case
       "string-indexof-r - trivially match the empty substring"
