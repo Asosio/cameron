@@ -10,6 +10,7 @@
          "collections/frozen.rkt"
          "collections/key-get.rkt"
          "collections/key-set.rkt"
+         "collections/key-update.rkt"
          "collections/key-rm.rkt"
          "collections/nth-get.rkt"
          "collections/nth-set.rkt")
@@ -28,6 +29,7 @@
                "collections/frozen.rkt"
                "collections/key-get.rkt"
                "collections/key-set.rkt"
+               "collections/key-update.rkt"
                "collections/key-rm.rkt"
                "collections/nth-get.rkt"
                "collections/nth-set.rkt"))
