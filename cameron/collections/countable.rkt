@@ -3,6 +3,7 @@
 (require racket/generic
          (only-in racket/set set-count)
          (only-in racket vector-length length dict-count dict? set? set-mutable? set mutable-set)
+         (only-in racket string-length)
          cameron/defs)
 
 (provide
@@ -32,7 +33,9 @@
    [set?
     (def len set-count)]
    [set-mutable?
-    (def len set-count)]))
+    (def len set-count)]
+   [string?
+    (def len string-length)]))
 
 (module+ test
   (require rackunit)
@@ -111,5 +114,16 @@
       "mutable set - empty?"
     (check-equal? (empty? (mutable-set 1 2 3)) #f)
     (check-equal? (empty? (mutable-set 1)) #f)
-    (check-equal? (empty? (mutable-set)) #t)))
+    (check-equal? (empty? (mutable-set)) #t))
+
+  (test-case
+      "string - len"
+    (check-equal? (len "") 0)
+    (check-equal? (len " ") 1)
+    (check-equal? (len "dog") 3))
+
+  (test-case
+      "string - empty?"
+    (check-equal? (empty? "") #t)
+    (check-equal? (empty? "x") #f)))
               
