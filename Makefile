@@ -11,11 +11,15 @@ clean:
 setup:
 	raco setup --tidy $(COLLECTS)
 
-link:
+install-link:
 	raco pkg install --link -n $(PACKAGENAME) $$(pwd)
 
-unlink:
-	raco pkg remove $(PACKAGENAME)
+uninstall:
+	raco pkg remove --force $(PACKAGENAME)
+
+# if any part of cameron is changed, run this to keep dependent pkgs in sync
+refresh:
+	raco setup --avoid-main
 
 #Run all tests.
 test:
